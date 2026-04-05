@@ -1,0 +1,15 @@
+{
+  "account": {
+    "id": "account-2",
+    "accountNumber": "placeholder-account-02",
+    "displayName": "계좌 2 placeholder"
+  },
+  "withdrawalCategoryMap": {},
+  "depositRules": [],
+  "excludePrefixes": [],
+  "relatedTransferGroups": [],
+  "reportSettings": {
+    "majorWithdrawalThreshold": 250000,
+    "majorDepositThreshold": 100000
+  }
+}

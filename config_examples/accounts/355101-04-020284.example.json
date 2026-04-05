@@ -1,0 +1,50 @@
+{
+  "account": {
+    "id": "account-1",
+    "accountNumber": "masked-account-01",
+    "displayName": "기준 계좌 1호"
+  },
+  "withdrawalCategoryMap": {
+    "공급처A": "원재료",
+    "플랫폼B": "플랫폼비용",
+    "통신사": "인터넷"
+  },
+  "depositRules": [
+    {
+      "category": "관련자금그룹A",
+      "field": "description",
+      "type": "prefix",
+      "value": "관련자A"
+    },
+    {
+      "category": "관련자금그룹B",
+      "field": "description",
+      "type": "prefix",
+      "value": "관련자B"
+    },
+    {
+      "category": "ATM입금",
+      "field": "combined",
+      "type": "contains",
+      "value": "ATM입금"
+    }
+  ],
+  "excludePrefixes": [
+    "관련자A",
+    "관련자B"
+  ],
+  "relatedTransferGroups": [
+    {
+      "name": "관련자금그룹A",
+      "prefix": "관련자A"
+    },
+    {
+      "name": "관련자금그룹B",
+      "prefix": "관련자B"
+    }
+  ],
+  "reportSettings": {
+    "majorWithdrawalThreshold": 250000,
+    "majorDepositThreshold": 100000
+  }
+}

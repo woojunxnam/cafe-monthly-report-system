@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>카페 월간 계좌 리포트 시스템</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Cafe Monthly Report Repository Starter</p>
+        <h1>월별 카페 계좌 리포트 시스템</h1>
+        <p class="hero-text">
+          기존 `cafe_monthly_report_final_pack`의 보고 철학을 유지하면서, 계좌별 월간 리포트와
+          최종 master report를 브라우저 안에서 생성하는 시작점입니다.
+        </p>
+      </div>
+      <div class="hero-panel">
+        <div class="metric-card">
+          <span class="metric-label">기준 계좌</span>
+          <strong>Account 1</strong>
+          <span class="metric-note">private rules 로컬 주입</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">현재 단계</span>
+          <strong>MVP</strong>
+          <span class="metric-note">3개 업로드 섹션 + master 흐름</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-grid">
+      <section class="control-panel">
+        <div class="panel-head">
+          <h2>입력</h2>
+          <p>각 계좌별 거래 파일과 선택적 비공개 규칙 파일을 업로드한 뒤 시작 버튼을 누르세요.</p>
+        </div>
+
+        <div class="toolbar">
+          <label class="month-field">
+            <span>리포트 월</span>
+            <input id="report-month" type="month" />
+          </label>
+          <button id="start-button" class="primary-button" type="button">시작</button>
+        </div>
+
+        <div id="account-sections" class="account-list"></div>
+      </section>
+
+      <section class="result-panel">
+        <div class="panel-head">
+          <h2>결과</h2>
+          <p>계좌별 report와 master report가 생성되면 이 영역에 다운로드 버튼과 미리보기가 나타납니다.</p>
+        </div>
+
+        <div id="status-box" class="status-box">준비됨. 업로드 후 시작을 누르면 브라우저에서 바로 집계합니다.</div>
+        <div id="result-summary" class="result-summary"></div>
+        <div id="download-list" class="download-list"></div>
+        <iframe id="preview-frame" class="preview-frame" title="리포트 미리보기"></iframe>
+      </section>
+    </main>
+  </div>
+
+  <template id="account-card-template">
+    <article class="account-card">
+      <div class="account-card-head">
+        <div>
+          <h3 class="account-title"></h3>
+          <p class="account-subtitle"></p>
+        </div>
+        <span class="account-badge"></span>
+      </div>
+
+      <div class="field-grid">
+        <label class="field">
+          <span>거래 파일</span>
+          <input class="transaction-file" type="file" accept=".csv,.xls,.xlsx" />
+        </label>
+
+        <label class="field">
+          <span>비공개 규칙 JSON</span>
+          <input class="rules-file" type="file" accept=".json,application/json" />
+        </label>
+      </div>
+
+      <div class="account-meta"></div>
+    </article>
+  </template>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

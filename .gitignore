@@ -1,0 +1,24 @@
+# Private business rules and secrets
+private/*
+!private/README.md
+secrets/
+
+# Sensitive legacy inputs / outputs
+data/raw/
+output/
+config/*.yaml
+
+# Runtime exports
+generated/
+downloads/
+
+# Common local files
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+__pycache__/
+*.pyc
