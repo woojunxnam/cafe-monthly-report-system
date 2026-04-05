@@ -1,8 +1,8 @@
 const dateAliases = ["거래일시", "거래일자", "일시", "날짜", "date", "datetime"];
-const descriptionAliases = ["거래내용", "기재내용", "적요", "상대방", "내용", "description"];
-const noteAliases = ["통장메모", "메모", "비고", "note", "memo"];
-const withdrawalAliases = ["출금액", "withdrawal", "debit"];
-const depositAliases = ["입금액", "deposit", "credit"];
+const descriptionAliases = ["거래내용", "기재내용", "적요", "상대방", "보낸분/받는분", "내용", "description"];
+const noteAliases = ["통장메모", "메모", "비고", "내 통장 표시", "note", "memo"];
+const withdrawalAliases = ["출금액", "출금액(원)", "withdrawal", "debit"];
+const depositAliases = ["입금액", "입금액(원)", "deposit", "credit"];
 
 export async function parseTransactionFile(file, manifest) {
   if (!window.XLSX) {
@@ -13,7 +13,7 @@ export async function parseTransactionFile(file, manifest) {
   const workbook = window.XLSX.read(buffer, { type: "array", cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  const rows = extractRows(sheet);
 
   if (!rows.length) {
     throw new Error(`${manifest.label}: 업로드 파일에 읽을 수 있는 행이 없습니다.`);
@@ -22,6 +22,41 @@ export async function parseTransactionFile(file, manifest) {
   return rows
     .map((row, index) => normalizeRow(row, manifest, index))
     .filter(Boolean);
+}
+
+function extractRows(sheet) {
+  const matrix = window.XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false
+  });
+
+  if (!matrix.length) {
+    return [];
+  }
+
+  const headerRowIndex = matrix.findIndex((row) =>
+    Array.isArray(row) &&
+    row.some((cell) => matchesAlias(cell, dateAliases)) &&
+    row.some((cell) => matchesAlias(cell, descriptionAliases))
+  );
+
+  if (headerRowIndex === -1) {
+    return window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+  }
+
+  const headerRow = matrix[headerRowIndex].map((cell) => String(cell ?? "").trim());
+  return matrix
+    .slice(headerRowIndex + 1)
+    .filter((row) => Array.isArray(row) && row.some((cell) => String(cell ?? "").trim() !== ""))
+    .map((row) => {
+      const obj = {};
+      for (let index = 0; index < headerRow.length; index += 1) {
+        const key = headerRow[index] || `column_${index}`;
+        obj[key] = row[index] ?? "";
+      }
+      return obj;
+    });
 }
 
 function normalizeRow(row, manifest, index) {
@@ -68,6 +103,11 @@ function findValue(row, aliases) {
     }
   }
   return "";
+}
+
+function matchesAlias(value, aliases) {
+  const text = String(value ?? "").trim().toLowerCase();
+  return aliases.some((alias) => text === alias.toLowerCase());
 }
 
 function cleanText(value) {
