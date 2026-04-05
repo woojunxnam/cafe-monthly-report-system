@@ -95,12 +95,14 @@
           <div><strong>저장 상태:</strong> <span class="vault-saved-state">확인 중</span></div>
           <div><strong>마지막 업데이트:</strong> <span class="vault-updated-at">-</span></div>
           <div><strong>현재 사용 규칙:</strong> <span class="vault-active-source">업로드 우선</span></div>
+          <div><strong>백업 방식:</strong> <span class="vault-backup-state">일반/암호화 내보내기 가능</span></div>
         </div>
         <div class="vault-actions">
           <button class="secondary-button vault-save-button" type="button">금고에 저장</button>
           <button class="secondary-button vault-load-button" type="button">금고에서 불러오기</button>
           <button class="secondary-button vault-delete-button" type="button">금고에서 삭제</button>
-          <button class="secondary-button vault-export-button" type="button">내보내기</button>
+          <button class="secondary-button vault-export-plain-button" type="button">일반 내보내기</button>
+          <button class="secondary-button vault-export-encrypted-button" type="button">암호화 내보내기</button>
           <button class="secondary-button vault-import-button" type="button">가져오기</button>
           <input class="vault-import-file" type="file" accept=".json,application/json" hidden />
         </div>

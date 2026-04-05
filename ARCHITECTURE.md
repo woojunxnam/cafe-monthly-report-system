@@ -56,7 +56,7 @@
 
 ## 브라우저 로컬 비밀 규칙 금고
 
-현재 1차 구현은 `src/core/privateRuleVault.js`에서 담당합니다.
+현재 1차 구현은 [privateRuleVault.js](/c:/Users/남우현/Desktop/cafe_monthly_report_final_pack/src/core/privateRuleVault.js)에서 담당합니다.
 
 - 기본 저장소: IndexedDB
 - fallback 저장소: localStorage
@@ -73,22 +73,50 @@
 - 다음 방문 시 자동 로드
 - 수동 불러오기
 - 삭제
-- 내보내기
-- 가져오기
 
-현재 금고는 브라우저 로컬 저장소만 사용하며, 서버 동기화는 하지 않습니다.
+## 백업 계층
+
+현재 2차 보강은 [privateRuleBackupCrypto.js](/c:/Users/남우현/Desktop/cafe_monthly_report_final_pack/src/core/privateRuleBackupCrypto.js)에서 담당합니다.
+
+- 일반 백업 export
+- 암호화 백업 export
+- 암호화 백업 import
+- 구형 비암호화 export 호환 import
+
+암호화 방식:
+
+- Web Crypto API
+- PBKDF2-SHA-256
+- AES-GCM 256bit
+
+백업 계층은 로컬 금고와 분리되어 있으며, 장치 간 이동성을 위한 파일 기반 복원을 담당합니다.
+
+## 권장 운영 구조
+
+1. public repo
+   - 코드, 문서, 예시만 포함
+2. browser local vault
+   - 빠른 재사용용
+3. private backup repo
+   - 암호화 백업 파일 보관용
+
+중요:
+
+- 공개 Pages는 private repo를 직접 읽지 않습니다.
+- 인증과 비밀 접근 로직은 프런트엔드에 넣지 않습니다.
 
 ## 향후 확장 포인트
 
-2단계에서 private GitHub repo sync를 붙일 수 있도록 금고 접근 로직을 모듈로 분리했습니다.
+3단계에서 private GitHub repo sync를 붙일 수 있도록 금고와 백업 로직을 모듈로 분리했습니다.
 
 확장 방향 예시:
 
 - `localVaultProvider`
+- `encryptedBackupFileProvider`
 - `privateRepoBackupProvider`
 - `hybridVaultProvider`
 
-즉, 현재 UI와 리포트 엔진은 유지하고 저장소 adapter만 교체 또는 추가할 수 있게 설계하는 방향입니다.
+즉, 현재 UI와 리포트 엔진은 유지하고 저장소 adapter만 교체 또는 추가하는 방향입니다.
 
 ## 출력물
 
@@ -118,6 +146,6 @@ master:
 ## 현재 제약
 
 - 브라우저 로컬 금고는 사용자 브라우저 저장소에 의존합니다.
-- 기기나 브라우저가 바뀌면 저장본이 자동 이전되지 않습니다.
-- 공용 PC에서는 사용 후 삭제가 필요합니다.
-- 암호화는 아직 1차 구현 범위에 넣지 않았고, 추후 passphrase 기반 계층을 별도 도입할 수 있습니다.
+- 기기나 브라우저가 바뀌면 금고 저장본이 자동 이전되지 않습니다.
+- 이를 보완하기 위해 백업 파일 export/import를 제공합니다.
+- 암호화 백업은 passphrase를 잊으면 복구할 수 없습니다.

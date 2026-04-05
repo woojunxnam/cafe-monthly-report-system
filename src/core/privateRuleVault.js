@@ -7,7 +7,7 @@ export function createPrivateRuleVault() {
   return {
     list: () => listEntries(),
     get: (accountId) => getEntry(accountId),
-    save: (accountId, rules) => saveEntry(accountId, rules),
+    save: (accountId, rules, options) => saveEntry(accountId, rules, options),
     remove: (accountId) => deleteEntry(accountId),
     exportEntry: (accountId) => exportEntry(accountId),
     importEntry: (payload) => importEntry(payload)
@@ -24,12 +24,12 @@ async function getEntry(accountId) {
     .catch(() => getFallbackEntry(accountId));
 }
 
-async function saveEntry(accountId, rules) {
+async function saveEntry(accountId, rules, options = {}) {
   const entry = {
     accountId,
     rules,
-    updatedAt: new Date().toISOString(),
-    schemaVersion: 1
+    updatedAt: options.updatedAt ?? new Date().toISOString(),
+    schemaVersion: options.schemaVersion ?? 1
   };
 
   return withStore("readwrite", (store) => promisifyRequest(store.put(entry)))
@@ -61,7 +61,10 @@ async function importEntry(payload) {
   if (!payload || !payload.accountId || !payload.rules) {
     throw new Error("가져오기 JSON 형식이 올바르지 않습니다.");
   }
-  return saveEntry(payload.accountId, payload.rules);
+  return saveEntry(payload.accountId, payload.rules, {
+    updatedAt: payload.updatedAt,
+    schemaVersion: payload.schemaVersion
+  });
 }
 
 function withStore(mode, callback) {

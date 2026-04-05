@@ -2,6 +2,11 @@ import { accountManifests } from "./config/accountManifests.js";
 import { starterRules } from "./config/starterRules.js";
 import { parseTransactionFile } from "./core/workbookParser.js";
 import { buildMasterReport, buildReports } from "./core/reportEngine.js";
+import {
+  createEncryptedBackupPayload,
+  createPlainBackupPayload,
+  importBackupPayload
+} from "./core/privateRuleBackupCrypto.js";
 import { createPrivateRuleVault } from "./core/privateRuleVault.js";
 
 const accountSections = document.querySelector("#account-sections");
@@ -99,11 +104,38 @@ function bindVaultActions(card, manifest) {
     }
   });
 
-  card.querySelector(".vault-export-button").addEventListener("click", async () => {
+  card.querySelector(".vault-export-plain-button").addEventListener("click", async () => {
     try {
-      const payload = await vault.exportEntry(manifest.id);
-      downloadJson(`${manifest.id}-private-rules-export.json`, payload);
-      setStatus(`${manifest.label} 금고 규칙을 내보냈습니다.`, "good");
+      const entry = await vault.exportEntry(manifest.id);
+      const payload = createPlainBackupPayload(entry);
+      downloadJson(`${manifest.id}-private-rules-backup.json`, payload);
+      setStatus(`${manifest.label} 규칙을 일반 백업으로 내보냈습니다.`, "good");
+      await renderVaultStatus(manifest.id, "plain");
+    } catch (error) {
+      setStatus(error.message, "warn");
+    }
+  });
+
+  card.querySelector(".vault-export-encrypted-button").addEventListener("click", async () => {
+    try {
+      const entry = await vault.exportEntry(manifest.id);
+      const passphrase = window.prompt("암호화 백업에 사용할 passphrase를 입력하세요. 8자 이상이 필요합니다.");
+      if (passphrase === null) {
+        setStatus("암호화 백업을 취소했습니다.", "warn");
+        return;
+      }
+      const confirmPassphrase = window.prompt("같은 passphrase를 한 번 더 입력하세요.");
+      if (confirmPassphrase === null) {
+        setStatus("암호화 백업을 취소했습니다.", "warn");
+        return;
+      }
+      if (passphrase !== confirmPassphrase) {
+        throw new Error("passphrase 확인 값이 일치하지 않습니다.");
+      }
+      const payload = await createEncryptedBackupPayload(entry, passphrase);
+      downloadJson(`${manifest.id}-private-rules-backup.encrypted.json`, payload);
+      setStatus(`${manifest.label} 규칙을 암호화 백업으로 내보냈습니다.`, "good");
+      await renderVaultStatus(manifest.id, "encrypted");
     } catch (error) {
       setStatus(error.message, "warn");
     }
@@ -120,11 +152,28 @@ function bindVaultActions(card, manifest) {
       if (payload.accountId && payload.accountId !== manifest.id) {
         throw new Error("가져오기 JSON의 accountId가 현재 슬롯과 다릅니다.");
       }
-      const entry = await vault.importEntry({ accountId: manifest.id, rules: payload.rules ?? payload });
+      const imported = await importBackupPayload(payload, async (backupPayload) => {
+        const passphrase = window.prompt(
+          `${manifest.label} 암호화 백업 복호화를 위한 passphrase를 입력하세요.`
+        );
+        if (passphrase === null) {
+          throw new Error("암호화 백업 가져오기를 취소했습니다.");
+        }
+        return passphrase;
+      });
+      const entry = await vault.importEntry({
+        accountId: manifest.id,
+        rules: imported.rules,
+        updatedAt: imported.updatedAt,
+        schemaVersion: imported.schemaVersion
+      });
       vaultEntryMap.set(manifest.id, entry);
       runtimeRuleMap.set(manifest.id, { rules: entry.rules, source: "금고 가져오기", autoLoaded: false, updatedAt: entry.updatedAt });
-      await renderVaultStatus(manifest.id);
-      setStatus(`${manifest.label} 규칙을 금고로 가져왔습니다.`, "good");
+      await renderVaultStatus(manifest.id, imported.backupMode);
+      setStatus(
+        `${manifest.label} 규칙을 금고로 가져왔습니다. 백업 형식: ${formatBackupMode(imported.backupMode)}`,
+        "good"
+      );
     } catch (error) {
       setStatus(error.message, "warn");
     } finally {
@@ -151,17 +200,19 @@ async function autoLoadVaultRules() {
   }
 }
 
-async function renderVaultStatus(accountId) {
+async function renderVaultStatus(accountId, backupMode = null) {
   const card = accountCardMap.get(accountId);
   const runtime = runtimeRuleMap.get(accountId);
   const savedEntry = vaultEntryMap.get(accountId);
   const savedState = card.querySelector(".vault-saved-state");
   const updatedAt = card.querySelector(".vault-updated-at");
   const activeSource = card.querySelector(".vault-active-source");
+  const backupState = card.querySelector(".vault-backup-state");
   const autoBadge = card.querySelector(".vault-auto-badge");
 
   savedState.textContent = savedEntry ? "저장됨" : "없음";
   updatedAt.textContent = savedEntry ? formatTimestamp(savedEntry.updatedAt) : "-";
+  backupState.textContent = backupMode ? formatBackupMode(backupMode) : "일반/암호화 내보내기 가능";
 
   if (!runtime) {
     activeSource.textContent = "starter rules만 사용";
@@ -372,4 +423,17 @@ function formatTimestamp(isoString) {
     return "-";
   }
   return date.toLocaleString("ko-KR");
+}
+
+function formatBackupMode(mode) {
+  if (mode === "encrypted") {
+    return "암호화 백업";
+  }
+  if (mode === "legacy-plain") {
+    return "구형 일반 백업";
+  }
+  if (mode === "plain") {
+    return "일반 백업";
+  }
+  return "일반/암호화 내보내기 가능";
 }
