@@ -58,9 +58,9 @@ export function renderAccountHtml(report) {
   .chart-box { border:1px solid var(--line); padding:10px; background:#fff; }
   .chart-title { margin:0 0 8px; font-size:13px; font-weight:700; }
   svg { width:100%; height:auto; display:block; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
   thead th { background:var(--soft); font-weight:700; }
-  th, td { border:1px solid var(--line); padding:8px 9px; white-space:nowrap; }
+  th, td { border:1px solid var(--line); padding:8px 9px; white-space:normal; word-break:break-word; overflow-wrap:anywhere; vertical-align:top; }
   th:first-child, td:first-child { text-align:left; }
   td.num, th.num { text-align:right; }
   tbody tr:nth-child(even) { background:var(--soft2); }
@@ -73,6 +73,8 @@ export function renderAccountHtml(report) {
   .note-box { border:1px solid var(--line); background:#fcfcfc; padding:12px 14px; }
   .note-box ul { margin:0; padding-left:18px; }
   .note-box li { margin-bottom:6px; }
+  .detail-toggle { border:1px solid var(--line); padding:12px; background:#fff; }
+  .detail-toggle summary { cursor:pointer; font-weight:700; margin-bottom:12px; }
   .footer { margin-top:10px; color:var(--muted); font-size:12px; text-align:right; }
   @media (max-width:1100px) { .meta, .two-col, .detail-grid { grid-template-columns:1fr; } }
 </style>
@@ -145,13 +147,21 @@ export function renderAccountHtml(report) {
 
   <section class="section">
     <h2>5. 주요 입금 상세</h2>
-    <p class="desc">월 합계가 기준 이상인 입금 카테고리의 개별 거래를 펼쳐 보여줍니다.</p>
-    <div class="detail-grid">${report.majorDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
+    <p class="desc">거래처입금과 기타입금_고액을 먼저 보여줍니다.</p>
+    <div class="detail-grid">${report.featuredDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
   <section class="section">
-    <h2>6. 제외 또는 관련 출금</h2>
-    <p class="desc">운영지출에서 제외된 출금만 별도로 남겨 검토합니다.</p>
+    <h2>6. 추가 입금 상세</h2>
+    <details class="detail-toggle"${report.secondaryDepositGroups.length ? "" : " open"}>
+      <summary>카드매출정산, 박재민관련, ATM입금, 성기용관련, 고객직접입금, 기타입금_소액 보기</summary>
+      <div class="detail-grid">${report.secondaryDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
+    </details>
+  </section>
+
+  <section class="section">
+    <h2>7. 제외 출금 검토</h2>
+    <p class="desc">운영지출에서 제외된 출금만 따로 남긴 검토 섹션입니다. 관련자금 출금이나 exclude prefix에 걸린 행이 여기로 옵니다.</p>
     ${renderSummaryTable(
       report.excludedRows.map((row) => ({
         dateKey: row.dateKey,
@@ -173,7 +183,7 @@ export function renderAccountHtml(report) {
   </section>
 
   <section class="section">
-    <h2>7. 입금 원본 분류표</h2>
+    <h2>8. 입금 원본 분류표</h2>
     <p class="desc">입금 원본 행에 어떤 카테고리가 붙었는지 확인하는 검토용 표입니다.</p>
     ${renderSummaryTable(
       report.deposits.map((row) => ({
@@ -196,12 +206,12 @@ export function renderAccountHtml(report) {
   </section>
 
   <section class="section">
-    <h2>8. 관련 개별 거래</h2>
+    <h2>9. 관련 개별 거래</h2>
     <div class="detail-grid">${report.relatedDetailGroups.map(renderRelatedDetailBox).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
   <section class="section">
-    <h2>9. 검토 메모</h2>
+    <h2>10. 검토 메모</h2>
     <div class="note-box"><ul>${report.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></div>
   </section>
 
@@ -242,9 +252,9 @@ export function renderMasterHtml(master) {
   .chart-box { border:1px solid var(--line); padding:10px; background:#fff; }
   .chart-title { margin:0 0 8px; font-size:13px; font-weight:700; }
   svg { width:100%; height:auto; display:block; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
   thead th { background:var(--soft); font-weight:700; }
-  th, td { border:1px solid var(--line); padding:8px 9px; white-space:nowrap; }
+  th, td { border:1px solid var(--line); padding:8px 9px; white-space:normal; word-break:break-word; overflow-wrap:anywhere; vertical-align:top; }
   th:first-child, td:first-child { text-align:left; }
   td.num, th.num { text-align:right; }
   tbody tr:nth-child(even) { background:var(--soft2); }
@@ -257,6 +267,8 @@ export function renderMasterHtml(master) {
   .note-box { border:1px solid var(--line); background:#fcfcfc; padding:12px 14px; }
   .note-box ul { margin:0; padding-left:18px; }
   .note-box li { margin-bottom:6px; }
+  .detail-toggle { border:1px solid var(--line); padding:12px; background:#fff; }
+  .detail-toggle summary { cursor:pointer; font-weight:700; margin-bottom:12px; }
   .footer { margin-top:10px; color:var(--muted); font-size:12px; text-align:right; }
   @media (max-width:1100px) { .meta, .two-col, .detail-grid { grid-template-columns:1fr; } }
 </style>
@@ -327,11 +339,20 @@ export function renderMasterHtml(master) {
 
   <section class="section">
     <h2>5. 주요 입금 상세</h2>
-    <div class="detail-grid">${master.majorDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
+    <div class="detail-grid">${master.featuredDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
   <section class="section">
-    <h2>6. 제외 또는 관련 출금</h2>
+    <h2>6. 추가 입금 상세</h2>
+    <details class="detail-toggle"${master.secondaryDepositGroups.length ? "" : " open"}>
+      <summary>카드매출정산, 박재민관련, ATM입금, 성기용관련, 고객직접입금, 기타입금_소액 보기</summary>
+      <div class="detail-grid">${master.secondaryDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
+    </details>
+  </section>
+
+  <section class="section">
+    <h2>7. 제외 출금 검토</h2>
+    <p class="desc">운영지출에서 제외된 출금만 따로 남긴 검토 섹션입니다. 관련자금 출금이나 exclude prefix에 걸린 행이 여기로 옵니다.</p>
     ${renderSummaryTable(
       master.excludedRows.map((row) => ({
         accountLabel: row.accountLabel,
@@ -355,7 +376,7 @@ export function renderMasterHtml(master) {
   </section>
 
   <section class="section">
-    <h2>7. 입금 원본 분류표</h2>
+    <h2>8. 입금 원본 분류표</h2>
     ${renderSummaryTable(
       master.deposits.map((row) => ({
         accountLabel: row.accountLabel,
@@ -379,12 +400,12 @@ export function renderMasterHtml(master) {
   </section>
 
   <section class="section">
-    <h2>8. 관련 개별 거래</h2>
+    <h2>9. 관련 개별 거래</h2>
     <div class="detail-grid">${master.relatedDetailGroups.map(renderRelatedDetailBox).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
   <section class="section">
-    <h2>9. 검토 메모</h2>
+    <h2>10. 검토 메모</h2>
     <div class="note-box"><ul>${master.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></div>
   </section>
 
@@ -487,7 +508,7 @@ function renderDailyBarChart(series, palette) {
     const barHeight = max ? (item.total / max) * chartHeight : 0;
     const y = top + chartHeight - barHeight;
     const color = palette[index % palette.length];
-    svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="6" fill="${color}"/>`;
+    svg += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="6" fill="${color}"><title>${escapeHtml(item.dateKey)} / ${formatWon(item.total)}</title></rect>`;
     svg += `<text x="${(x + barWidth / 2).toFixed(1)}" y="${height - 22}" text-anchor="middle" font-size="10" fill="#111827">${escapeHtml(
       item.label
     )}</text>`;
@@ -522,7 +543,7 @@ function renderCategoryBarChart(rows, palette) {
       item.category
     )}</text>`;
     svg += `<rect x="${chartLeft}" y="${y}" width="${chartWidth}" height="16" rx="8" fill="#F3F4F6"/>`;
-    svg += `<rect x="${chartLeft}" y="${y}" width="${barWidth.toFixed(1)}" height="16" rx="8" fill="${color}"/>`;
+    svg += `<rect x="${chartLeft}" y="${y}" width="${barWidth.toFixed(1)}" height="16" rx="8" fill="${color}"><title>${escapeHtml(item.category)} / ${item.count.toLocaleString("ko-KR")}건 / ${formatWon(item.total)}</title></rect>`;
     svg += `<text x="${(chartLeft + Math.min(barWidth + 8, chartWidth - 42)).toFixed(1)}" y="${(y + 11).toFixed(
       1
     )}" font-size="11" fill="#111827">${formatWon(item.total)}</text>`;

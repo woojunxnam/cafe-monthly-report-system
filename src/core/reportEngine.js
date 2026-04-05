@@ -86,6 +86,12 @@ export function buildReports({ manifest, transactions, overrides, reportMonth })
     depositDailySeries: buildDailySeries(deposits, "deposit"),
     majorWithdrawalGroups: buildDetailGroups(majorWithdrawals, "withdrawal"),
     majorDepositGroups: buildDetailGroups(majorDeposits, "deposit"),
+    featuredDepositGroups: buildPreferredDepositGroups(majorDeposits, ["거래처입금", "기타입금_고액"]),
+    secondaryDepositGroups: buildSecondaryDepositGroups(
+      majorDeposits,
+      ["거래처입금", "기타입금_고액"],
+      ["카드매출정산", "박재민관련", "ATM입금", "성기용관련", "고객직접입금", "기타입금_소액"]
+    ),
     relatedDetailGroups: buildRelatedDetailGroups(relatedRows, rules.relatedTransferGroups),
     notes: buildReviewNotes({
       reportMonth,
@@ -227,6 +233,12 @@ export function buildMasterReport(accountReports, reportMonth) {
     depositDailySeries: buildDailySeries(deposits, "deposit"),
     majorWithdrawalGroups: buildDetailGroups(majorWithdrawals, "withdrawal"),
     majorDepositGroups: buildDetailGroups(majorDeposits, "deposit"),
+    featuredDepositGroups: buildPreferredDepositGroups(majorDeposits, ["거래처입금", "기타입금_고액"]),
+    secondaryDepositGroups: buildSecondaryDepositGroups(
+      majorDeposits,
+      ["거래처입금", "기타입금_고액", "카드매출정산", "박재민관련", "ATM입금", "성기용관련", "고객직접입금", "기타입금_소액"],
+      ["카드매출정산", "박재민관련", "ATM입금", "성기용관련", "고객직접입금", "기타입금_소액"]
+    ),
     relatedDetailGroups: buildRelatedDetailGroups(relatedRows),
     notes: buildMasterReviewNotes({
       reportMonth,
@@ -473,6 +485,30 @@ function buildDetailGroups(rows, amountField) {
       rows: group.rows.sort(sortRowsAsc)
     }))
     .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category, "ko"));
+}
+
+function buildPreferredDepositGroups(rows, preferredCategories) {
+  const groups = buildDetailGroups(rows, "deposit");
+  const order = new Map(preferredCategories.map((category, index) => [category, index]));
+  return groups
+    .filter((group) => order.has(group.category))
+    .sort((a, b) => order.get(a.category) - order.get(b.category));
+}
+
+function buildSecondaryDepositGroups(rows, preferredCategories, explicitOrder = []) {
+  const groups = buildDetailGroups(rows, "deposit");
+  const preferredSet = new Set(preferredCategories);
+  const order = new Map(explicitOrder.map((category, index) => [category, index]));
+  return groups
+    .filter((group) => !preferredSet.has(group.category))
+    .sort((a, b) => {
+      const aOrder = order.has(a.category) ? order.get(a.category) : 999;
+      const bOrder = order.has(b.category) ? order.get(b.category) : 999;
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      return b.total - a.total || a.category.localeCompare(b.category, "ko");
+    });
 }
 
 function buildRelatedDetailGroups(rows, groups) {
