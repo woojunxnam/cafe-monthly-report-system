@@ -2,7 +2,7 @@ import { toCsv } from "./csv.js";
 import { renderAccountHtml, renderMasterHtml } from "./reportRenderer.js";
 
 export function buildReports({ manifest, transactions, overrides, reportMonth }) {
-  const rules = mergeRules(manifest.rules, overrides);
+  const rules = normalizeRules(mergeRules(manifest.rules, overrides));
   const monthRows = transactions.filter((row) => row.monthKey === reportMonth);
 
   const excludedRows = [];
@@ -17,7 +17,7 @@ export function buildReports({ manifest, transactions, overrides, reportMonth })
         relatedRows.push({ ...row, relatedGroup, movementType: "withdrawal" });
       }
 
-      const isExcluded = matchesAnyPrefix(row.description, rules.excludePrefixes);
+      const isExcluded = matchesAnyPrefix(resolveRuleText(row), rules.excludePrefixes);
       if (isExcluded) {
         excludedRows.push({ ...row, exclusionReason: "exclude-prefix" });
       } else {
@@ -140,14 +140,38 @@ function mergeRules(base, overrides = {}) {
   return {
     withdrawalCategoryMap: { ...(base.withdrawalCategoryMap || {}), ...(overrides.withdrawalCategoryMap || {}) },
     depositRules: [...(overrides.depositRules || base.depositRules || [])],
+    depositBindingPriority: [...(overrides.depositBindingPriority || base.depositBindingPriority || [])],
     excludePrefixes: [...new Set([...(base.excludePrefixes || []), ...(overrides.excludePrefixes || [])])],
     relatedTransferGroups: [...(overrides.relatedTransferGroups || base.relatedTransferGroups || [])],
-    reportSettings: { ...(base.reportSettings || {}), ...(overrides.reportSettings || {}) }
+    reportSettings: { ...(base.reportSettings || {}), ...(overrides.reportSettings || {}) },
+    defaultWithdrawalCategory: overrides.defaultWithdrawalCategory || base.defaultWithdrawalCategory || "기타"
   };
 }
 
+function normalizeRules(rules) {
+  return {
+    ...rules,
+    depositRules: normalizeDepositRules(rules.depositRules, rules.depositBindingPriority)
+  };
+}
+
+function normalizeDepositRules(rules = [], priority = []) {
+  const ordered = priority.length
+    ? priority.map((category) => rules.find((rule) => rule.category === category)).filter(Boolean)
+    : rules;
+
+  return ordered.map((rule) => ({
+    ...rule,
+    type: rule.type || rule.kind || "",
+    value: rule.value ?? rule.pattern ?? "",
+    minAmount: rule.minAmount ?? rule.amountAtLeast ?? null,
+    maxAmountExclusive: rule.maxAmountExclusive ?? rule.amountLessThan ?? null,
+    fields: rule.fields || (rule.field ? [rule.field] : [])
+  }));
+}
+
 function resolveWithdrawalCategory(row, categoryMap) {
-  const text = row.description || "";
+  const text = resolveRuleText(row);
   const match = Object.entries(categoryMap || {}).find(([needle]) => text.includes(needle));
   return match ? match[1] : "기타";
 }
@@ -155,7 +179,7 @@ function resolveWithdrawalCategory(row, categoryMap) {
 function resolveDepositCategory(row, rules) {
   const ordered = rules || [];
   for (const rule of ordered) {
-    if (rule.fallback) {
+    if (rule.type === "fallback") {
       if (rule.minAmount != null && row.deposit < rule.minAmount) {
         continue;
       }
@@ -165,11 +189,6 @@ function resolveDepositCategory(row, rules) {
       return rule.category;
     }
 
-    const target = selectRuleField(row, rule.field);
-    if (!target) {
-      continue;
-    }
-
     if (rule.maxAmount != null && row.deposit >= rule.maxAmount) {
       continue;
     }
@@ -177,13 +196,21 @@ function resolveDepositCategory(row, rules) {
       continue;
     }
 
-    if (rule.type === "prefix" && target.startsWith(rule.value)) {
+    const targets = selectRuleTargets(row, rule);
+    if (!targets.length) {
+      continue;
+    }
+
+    if (rule.type === "prefix" && targets.some((target) => target.startsWith(rule.value))) {
       return rule.category;
     }
-    if (rule.type === "contains" && target.includes(rule.value)) {
+    if ((rule.type === "contains" || rule.type === "contains_any") && targets.some((target) => target.includes(rule.value))) {
       return rule.category;
     }
-    if (rule.type === "regex" && new RegExp(rule.value).test(target)) {
+    if (rule.type === "regex" && targets.some((target) => new RegExp(rule.value).test(target))) {
+      return rule.category;
+    }
+    if (rule.type === "regex_amount" && targets.some((target) => new RegExp(rule.value).test(target))) {
       return rule.category;
     }
   }
@@ -191,19 +218,48 @@ function resolveDepositCategory(row, rules) {
   return "기타입금";
 }
 
+function selectRuleTargets(row, rule) {
+  const fields = rule.fields?.length ? rule.fields : [rule.field].filter(Boolean);
+  if (!fields.length) {
+    return [resolveRuleText(row)].filter(Boolean);
+  }
+  return fields.map((field) => selectRuleField(row, field)).filter(Boolean);
+}
+
 function selectRuleField(row, field) {
+  if (!field) {
+    return "";
+  }
   if (field === "combined") {
     return row.combined || "";
+  }
+  if (field === "counterparty") {
+    return row.counterparty || row.description || "";
+  }
+  if (field === "display") {
+    return row.display || row.note || "";
+  }
+  if (field === "memo") {
+    return row.memo || row.note || "";
+  }
+  if (field === "description") {
+    return row.description || "";
   }
   return row[field] || "";
 }
 
 function matchRelatedGroup(row, groups) {
-  return (groups || []).find((group) => (row.description || "").startsWith(group.prefix))?.name || "";
+  return (groups || []).find((group) => (row.counterparty || row.description || "").startsWith(group.prefix))?.name || "";
 }
 
 function matchesAnyPrefix(text, prefixes) {
   return (prefixes || []).some((prefix) => (text || "").startsWith(prefix));
+}
+
+function resolveRuleText(row) {
+  return [row.counterparty, row.description, row.display, row.memo, row.note]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function summarizeByCategory(rows, amountField) {

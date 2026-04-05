@@ -61,8 +61,11 @@ function extractRows(sheet) {
 
 function normalizeRow(row, manifest, index) {
   const dateValue = findValue(row, dateAliases);
-  const description = cleanText(findValue(row, descriptionAliases));
-  const note = cleanText(findValue(row, noteAliases));
+  const counterparty = cleanText(findValue(row, ["보낸분/받는분", "상대방", "counterparty"]));
+  const description = cleanText(findValue(row, ["적요", "거래내용", "기재내용", "description"])) || counterparty;
+  const display = cleanText(findValue(row, ["내 통장 표시", "display"]));
+  const memo = cleanText(findValue(row, ["메모", "통장메모", "비고", "memo"]));
+  const note = [display, memo].filter(Boolean).join(" / ");
   const withdrawal = toAmount(findValue(row, withdrawalAliases));
   const deposit = toAmount(findValue(row, depositAliases));
 
@@ -86,9 +89,12 @@ function normalizeRow(row, manifest, index) {
     date,
     dateKey,
     monthKey,
+    counterparty,
     description,
+    display,
+    memo,
     note,
-    combined: `${description} ${note}`.trim(),
+    combined: `${counterparty} ${description} ${display} ${memo}`.trim(),
     withdrawal,
     deposit,
     direction: withdrawal > 0 ? "withdrawal" : "deposit"
