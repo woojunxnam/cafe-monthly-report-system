@@ -147,7 +147,7 @@ export function renderAccountHtml(report) {
 
   <section class="section">
     <h2>5. 주요 입금 상세</h2>
-    <p class="desc">거래처입금과 기타입금_고액을 먼저 보여줍니다.</p>
+    <p class="desc">거래처입금과 기타입금_고액을 우선 노출합니다. major threshold와 무관하게 거래가 있으면 보여줍니다.</p>
     <div class="detail-grid">${report.featuredDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
@@ -183,7 +183,30 @@ export function renderAccountHtml(report) {
   </section>
 
   <section class="section">
-    <h2>8. 입금 원본 분류표</h2>
+    <h2>8. 제외 입금 검토</h2>
+    <p class="desc">현재는 기타입금_고액, 기타입금_소액을 입금 검토 대상으로 별도 표시합니다. 즉, 메인 요약에는 포함되지만 수동 검토가 필요한 입금 모음입니다.</p>
+    ${renderSummaryTable(
+      report.excludedDepositRows.map((row) => ({
+        dateKey: row.dateKey,
+        timeKey: row.timeKey,
+        counterparty: row.counterparty,
+        description: row.description,
+        category: row.category,
+        amount: row.deposit
+      })),
+      [
+        { key: "dateKey", label: "날짜" },
+        { key: "timeKey", label: "시각" },
+        { key: "counterparty", label: "원본 이름" },
+        { key: "description", label: "적요" },
+        { key: "category", label: "카테고리" },
+        { key: "amount", label: "금액", numeric: true, render: (value) => formatWon(value) }
+      ]
+    )}
+  </section>
+
+  <section class="section">
+    <h2>9. 입금 원본 분류표</h2>
     <p class="desc">입금 원본 행에 어떤 카테고리가 붙었는지 확인하는 검토용 표입니다.</p>
     ${renderSummaryTable(
       report.deposits.map((row) => ({
@@ -206,12 +229,12 @@ export function renderAccountHtml(report) {
   </section>
 
   <section class="section">
-    <h2>9. 관련 개별 거래</h2>
+    <h2>10. 관련 개별 거래</h2>
     <div class="detail-grid">${report.relatedDetailGroups.map(renderRelatedDetailBox).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
   <section class="section">
-    <h2>10. 검토 메모</h2>
+    <h2>11. 검토 메모</h2>
     <div class="note-box"><ul>${report.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></div>
   </section>
 
@@ -339,6 +362,7 @@ export function renderMasterHtml(master) {
 
   <section class="section">
     <h2>5. 주요 입금 상세</h2>
+    <p class="desc">거래처입금과 기타입금_고액을 우선 노출합니다. major threshold와 무관하게 거래가 있으면 보여줍니다.</p>
     <div class="detail-grid">${master.featuredDepositGroups.map((group) => renderCategoryDetailBox(group, "deposit")).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
@@ -376,7 +400,32 @@ export function renderMasterHtml(master) {
   </section>
 
   <section class="section">
-    <h2>8. 입금 원본 분류표</h2>
+    <h2>8. 제외 입금 검토</h2>
+    <p class="desc">현재는 기타입금_고액, 기타입금_소액을 입금 검토 대상으로 별도 표시합니다. 즉, 메인 요약에는 포함되지만 수동 검토가 필요한 입금 모음입니다.</p>
+    ${renderSummaryTable(
+      master.excludedDepositRows.map((row) => ({
+        accountLabel: row.accountLabel,
+        dateKey: row.dateKey,
+        timeKey: row.timeKey,
+        counterparty: row.counterparty,
+        description: row.description,
+        category: row.category,
+        amount: row.deposit
+      })),
+      [
+        { key: "accountLabel", label: "계좌" },
+        { key: "dateKey", label: "날짜" },
+        { key: "timeKey", label: "시각" },
+        { key: "counterparty", label: "원본 이름" },
+        { key: "description", label: "적요" },
+        { key: "category", label: "카테고리" },
+        { key: "amount", label: "금액", numeric: true, render: (value) => formatWon(value) }
+      ]
+    )}
+  </section>
+
+  <section class="section">
+    <h2>9. 입금 원본 분류표</h2>
     ${renderSummaryTable(
       master.deposits.map((row) => ({
         accountLabel: row.accountLabel,
@@ -400,12 +449,12 @@ export function renderMasterHtml(master) {
   </section>
 
   <section class="section">
-    <h2>9. 관련 개별 거래</h2>
+    <h2>10. 관련 개별 거래</h2>
     <div class="detail-grid">${master.relatedDetailGroups.map(renderRelatedDetailBox).join("") || "<div class='detail-box'>데이터 없음</div>"}</div>
   </section>
 
   <section class="section">
-    <h2>10. 검토 메모</h2>
+    <h2>11. 검토 메모</h2>
     <div class="note-box"><ul>${master.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul></div>
   </section>
 

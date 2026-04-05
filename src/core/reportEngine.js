@@ -76,6 +76,7 @@ export function buildReports({ manifest, transactions, overrides, reportMonth })
     operatingWithdrawals,
     deposits,
     excludedRows,
+    excludedDepositRows: buildExcludedDepositRows(deposits),
     relatedRows,
     withdrawalSummary,
     depositSummary,
@@ -86,9 +87,9 @@ export function buildReports({ manifest, transactions, overrides, reportMonth })
     depositDailySeries: buildDailySeries(deposits, "deposit"),
     majorWithdrawalGroups: buildDetailGroups(majorWithdrawals, "withdrawal"),
     majorDepositGroups: buildDetailGroups(majorDeposits, "deposit"),
-    featuredDepositGroups: buildPreferredDepositGroups(majorDeposits, ["거래처입금", "기타입금_고액"]),
+    featuredDepositGroups: buildPreferredDepositGroups(deposits, ["거래처입금", "기타입금_고액"]),
     secondaryDepositGroups: buildSecondaryDepositGroups(
-      majorDeposits,
+      deposits,
       ["거래처입금", "기타입금_고액"],
       ["카드매출정산", "박재민관련", "ATM입금", "성기용관련", "고객직접입금", "기타입금_소액"]
     ),
@@ -223,6 +224,7 @@ export function buildMasterReport(accountReports, reportMonth) {
     operatingWithdrawals,
     deposits,
     excludedRows,
+    excludedDepositRows: buildExcludedDepositRows(deposits),
     relatedRows,
     withdrawalSummary,
     depositSummary,
@@ -233,9 +235,9 @@ export function buildMasterReport(accountReports, reportMonth) {
     depositDailySeries: buildDailySeries(deposits, "deposit"),
     majorWithdrawalGroups: buildDetailGroups(majorWithdrawals, "withdrawal"),
     majorDepositGroups: buildDetailGroups(majorDeposits, "deposit"),
-    featuredDepositGroups: buildPreferredDepositGroups(majorDeposits, ["거래처입금", "기타입금_고액"]),
+    featuredDepositGroups: buildPreferredDepositGroups(deposits, ["거래처입금", "기타입금_고액"]),
     secondaryDepositGroups: buildSecondaryDepositGroups(
-      majorDeposits,
+      deposits,
       ["거래처입금", "기타입금_고액", "카드매출정산", "박재민관련", "ATM입금", "성기용관련", "고객직접입금", "기타입금_소액"],
       ["카드매출정산", "박재민관련", "ATM입금", "성기용관련", "고객직접입금", "기타입금_소액"]
     ),
@@ -509,6 +511,10 @@ function buildSecondaryDepositGroups(rows, preferredCategories, explicitOrder = 
       }
       return b.total - a.total || a.category.localeCompare(b.category, "ko");
     });
+}
+
+function buildExcludedDepositRows(rows) {
+  return rows.filter((row) => row.category === "기타입금_고액" || row.category === "기타입금_소액");
 }
 
 function buildRelatedDetailGroups(rows, groups) {
