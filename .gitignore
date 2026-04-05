@@ -7,6 +7,9 @@ secrets/
 data/raw/
 output/
 config/*.yaml
+AGENT_INTRO_PROMPT.md
+CURRENT_DECISIONS.md
+PROJECT_HANDOFF.md
 
 # Runtime exports
 generated/
