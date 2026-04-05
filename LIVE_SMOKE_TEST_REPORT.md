@@ -6,7 +6,7 @@
 
 ## 테스트 시각
 
-- `2026-04-05 19:22:32 +09:00`
+- `2026-04-05 19:37:07 +09:00`
 
 ## 첫 화면 로드 결과
 
@@ -32,17 +32,21 @@
 
 - 첫 단계에서 페이지 자체가 `404`
 - 정적 자산 로드까지 진행되지 않음
+- 참고:
+  - `raw.githubusercontent.com/.../main/index.html` 응답 `200`
+  - `raw.githubusercontent.com/.../main/src/styles.css` 응답 `200`
 
 ## 수정한 문제
 
 - 애플리케이션 코드 수정 없음
-- 배포 경로 자체보다 상위 단계인 원격 저장소 접근/존재 상태가 문제로 확인됨
-- 로컬에는 `origin`을 설정함
+- 현재 코드의 정적 경로는 상대경로(`./src/...`)라 GitHub Pages 하위 경로 문제 가능성은 낮음
+- 문제 원인을 Pages 공개 반영 상태로 재분류함
 
 ## 추가 확인 사항
 
-- `git push -u origin main` 실행 결과: `remote: Repository not found.`
-- 따라서 현재 live 배포 실패 원인은 Pages 정적 자산 경로보다는 원격 저장소 상태 문제일 가능성이 높음
+- `git push -u origin main` 성공
+- `git ls-remote --heads origin` 에서 `refs/heads/main` 확인
+- live 배포 실패 원인은 현재 기준으로 GitHub Pages 공개 반영 지연 또는 Pages 설정 상태 문제 가능성이 높음
 
 ## 최종 판정
 
