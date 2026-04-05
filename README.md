@@ -95,6 +95,7 @@ python -m http.server 8080
 - 이 프로젝트는 GitHub Pages 같은 정적 배포에 맞춰 설계했습니다.
 - 서버 측 비밀값 없이 동작해야 합니다.
 - private rule은 배포 산출물에 넣지 않고 업로드 방식으로만 사용해야 합니다.
+- 현재 배포 URL: `https://woojunxnam.github.io/cafe-monthly-report-system/`
 - 배포 전 점검 절차는 [DEPLOYMENT_GUIDE.md](/c:/Users/남우현/Desktop/cafe_monthly_report_final_pack/DEPLOYMENT_GUIDE.md)를 따릅니다.
 
 ## 향후 확장 구조

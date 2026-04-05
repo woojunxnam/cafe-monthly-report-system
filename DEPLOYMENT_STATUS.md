@@ -18,14 +18,14 @@
 
 ## Pages 활성화 여부
 
-- 미확인 또는 반영 대기
-- Pages URL 직접 확인 결과: `404`
-- 원격 코드 자체는 올라가 있으므로 현재 문제는 push가 아니라 Pages 공개 반영 단계일 가능성이 높음
+- 활성화됨
+- Pages URL 직접 확인 결과: `200`
+- 원격 코드와 정적 자산(`index.html`, `src/styles.css`, `src/main.js`) 응답 정상 확인
 
 ## 배포 URL
 
 - 예상 URL: `https://woojunxnam.github.io/cafe-monthly-report-system/`
-- 실제 확인 결과: `404`
+- 실제 확인 결과: `200`
 
 ## smoke test 결과
 
@@ -38,22 +38,19 @@
 
 ### 실제 배포 환경
 
-- Pages URL 응답: `404`
-- 첫 화면 정상 로드: 실패
-- 3개 업로드 섹션 표시: 미확인
-- 시작 버튼 표시: 미확인
-- 정적 자산 로드 실패 여부: 미확인
-- 콘솔 치명 오류 여부: 미확인
-- GitHub Pages 하위 경로 문제 여부: 코드상 상대경로(`./src/...`)를 사용하고 있어 가능성 낮음
+- Pages URL 응답: `200`
+- 첫 화면 정상 로드: 성공
+- 3개 업로드 섹션 표시: 코드/모듈 기준 3개 manifest 확인
+- 시작 버튼 표시: HTML 기준 `#start-button` 존재 확인
+- 정적 자산 로드 실패 여부: `src/styles.css`, `src/main.js`, CDN xlsx 응답 모두 `200`
+- 콘솔 치명 오류 여부: 이 환경에서 브라우저 콘솔 직접 확인은 불가, 다만 자산 응답과 모듈 로드 기준 치명 오류 징후 없음
+- GitHub Pages 하위 경로 문제 여부: 상대경로(`./src/...`) 사용으로 문제 없음
 
 ## 확인된 문제
 
-- 로컬 `origin`은 설정됨
-- `main` 브랜치는 원격에 실제로 올라감
-- `raw.githubusercontent.com` 기준 `index.html`, `src/styles.css` 모두 `200`
-- Pages URL만 `404`
-- 따라서 현재 문제의 1차 원인은 애플리케이션 코드나 정적 자산 경로보다는 GitHub Pages 공개 반영 상태임
+- 확인된 치명 문제 없음
+- 초기 반영 지연으로 `404`가 있었으나 현재는 Pages URL이 정상 응답
 
 ## 다음 즉시 작업 1개
 
-- GitHub 저장소의 `Settings > Pages` 에서 source가 `main / root` 로 잡혀 있는지 확인하고, 반영 후 Pages URL을 다시 열어 smoke test 재실행
+- 실제 브라우저에서 거래 파일 1개를 업로드해 end-to-end 리포트 생성 다운로드까지 한 번 수행
