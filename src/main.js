@@ -2,6 +2,7 @@ import { accountManifests } from "./config/accountManifests.js";
 import { starterRules } from "./config/starterRules.js";
 import { parseTransactionFile } from "./core/workbookParser.js";
 import { buildMasterReport, buildReports } from "./core/reportEngine.js";
+import { createPrivateRuleVault } from "./core/privateRuleVault.js";
 
 const accountSections = document.querySelector("#account-sections");
 const template = document.querySelector("#account-card-template");
@@ -11,9 +12,13 @@ const statusBox = document.querySelector("#status-box");
 const resultSummary = document.querySelector("#result-summary");
 const downloadList = document.querySelector("#download-list");
 const previewFrame = document.querySelector("#preview-frame");
+const vault = createPrivateRuleVault();
+const accountCardMap = new Map();
+const runtimeRuleMap = new Map();
+const vaultEntryMap = new Map();
 
 initializeMonth();
-renderAccountCards();
+await renderAccountCards();
 startButton.addEventListener("click", handleStart);
 
 function initializeMonth() {
@@ -21,7 +26,7 @@ function initializeMonth() {
   reportMonthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function renderAccountCards() {
+async function renderAccountCards() {
   accountSections.innerHTML = "";
   for (const manifest of accountManifests) {
     const fragment = template.content.cloneNode(true);
@@ -31,8 +36,143 @@ function renderAccountCards() {
     fragment.querySelector(".account-subtitle").textContent = `${manifest.accountNumber} / ${manifest.displayName}`;
     fragment.querySelector(".account-badge").textContent = manifest.kind === "baseline" ? "baseline" : "placeholder";
     fragment.querySelector(".account-meta").innerHTML = manifest.notes.map((note) => `<div>${note}</div>`).join("");
+    bindVaultActions(card, manifest);
     accountSections.appendChild(fragment);
+    accountCardMap.set(manifest.id, card);
   }
+
+  await autoLoadVaultRules();
+}
+
+function bindVaultActions(card, manifest) {
+  const rulesFileInput = card.querySelector(".rules-file");
+  const importButton = card.querySelector(".vault-import-button");
+  const importInput = card.querySelector(".vault-import-file");
+
+  rulesFileInput.addEventListener("change", async () => {
+    if (rulesFileInput.files[0]) {
+      const rules = await safeParseRulesFile(rulesFileInput.files[0], "비공개 규칙 JSON 파싱에 실패했습니다.");
+      runtimeRuleMap.set(manifest.id, { rules, source: "업로드 파일", autoLoaded: false });
+      await renderVaultStatus(manifest.id);
+    }
+  });
+
+  card.querySelector(".vault-save-button").addEventListener("click", async () => {
+    try {
+      const rules = await getCandidateRulesForSave(manifest.id);
+      const entry = await vault.save(manifest.id, rules);
+      vaultEntryMap.set(manifest.id, entry);
+      runtimeRuleMap.set(manifest.id, { rules: entry.rules, source: "금고 저장본", autoLoaded: false, updatedAt: entry.updatedAt });
+      await renderVaultStatus(manifest.id);
+      setStatus(`${manifest.label} 규칙을 금고에 저장했습니다.`, "good");
+    } catch (error) {
+      setStatus(error.message, "warn");
+    }
+  });
+
+  card.querySelector(".vault-load-button").addEventListener("click", async () => {
+    try {
+      const entry = await vault.get(manifest.id);
+      if (!entry) {
+        throw new Error("금고에 저장된 규칙이 없습니다.");
+      }
+      vaultEntryMap.set(manifest.id, entry);
+      runtimeRuleMap.set(manifest.id, { rules: entry.rules, source: "금고 불러오기", autoLoaded: false, updatedAt: entry.updatedAt });
+      await renderVaultStatus(manifest.id);
+      setStatus(`${manifest.label} 규칙을 금고에서 불러왔습니다.`, "good");
+    } catch (error) {
+      setStatus(error.message, "warn");
+    }
+  });
+
+  card.querySelector(".vault-delete-button").addEventListener("click", async () => {
+    try {
+      await vault.remove(manifest.id);
+      vaultEntryMap.delete(manifest.id);
+      if (runtimeRuleMap.get(manifest.id)?.source?.includes("금고")) {
+        runtimeRuleMap.delete(manifest.id);
+      }
+      await renderVaultStatus(manifest.id);
+      setStatus(`${manifest.label} 금고 규칙을 삭제했습니다.`, "good");
+    } catch (error) {
+      setStatus(error.message || "금고 규칙 삭제에 실패했습니다.", "warn");
+    }
+  });
+
+  card.querySelector(".vault-export-button").addEventListener("click", async () => {
+    try {
+      const payload = await vault.exportEntry(manifest.id);
+      downloadJson(`${manifest.id}-private-rules-export.json`, payload);
+      setStatus(`${manifest.label} 금고 규칙을 내보냈습니다.`, "good");
+    } catch (error) {
+      setStatus(error.message, "warn");
+    }
+  });
+
+  importButton.addEventListener("click", () => importInput.click());
+  importInput.addEventListener("change", async () => {
+    try {
+      const file = importInput.files[0];
+      if (!file) {
+        return;
+      }
+      const payload = await safeParseRulesFile(file, "가져오기 JSON 파싱에 실패했습니다.");
+      if (payload.accountId && payload.accountId !== manifest.id) {
+        throw new Error("가져오기 JSON의 accountId가 현재 슬롯과 다릅니다.");
+      }
+      const entry = await vault.importEntry({ accountId: manifest.id, rules: payload.rules ?? payload });
+      vaultEntryMap.set(manifest.id, entry);
+      runtimeRuleMap.set(manifest.id, { rules: entry.rules, source: "금고 가져오기", autoLoaded: false, updatedAt: entry.updatedAt });
+      await renderVaultStatus(manifest.id);
+      setStatus(`${manifest.label} 규칙을 금고로 가져왔습니다.`, "good");
+    } catch (error) {
+      setStatus(error.message, "warn");
+    } finally {
+      importInput.value = "";
+    }
+  });
+}
+
+async function autoLoadVaultRules() {
+  for (const manifest of accountManifests) {
+    const entry = await vault.get(manifest.id);
+    if (entry) {
+      vaultEntryMap.set(manifest.id, entry);
+      runtimeRuleMap.set(manifest.id, {
+        rules: entry.rules,
+        source: "금고 자동 로드",
+        autoLoaded: true,
+        updatedAt: entry.updatedAt
+      });
+    } else {
+      vaultEntryMap.delete(manifest.id);
+    }
+    await renderVaultStatus(manifest.id);
+  }
+}
+
+async function renderVaultStatus(accountId) {
+  const card = accountCardMap.get(accountId);
+  const runtime = runtimeRuleMap.get(accountId);
+  const savedEntry = vaultEntryMap.get(accountId);
+  const savedState = card.querySelector(".vault-saved-state");
+  const updatedAt = card.querySelector(".vault-updated-at");
+  const activeSource = card.querySelector(".vault-active-source");
+  const autoBadge = card.querySelector(".vault-auto-badge");
+
+  savedState.textContent = savedEntry ? "저장됨" : "없음";
+  updatedAt.textContent = savedEntry ? formatTimestamp(savedEntry.updatedAt) : "-";
+
+  if (!runtime) {
+    activeSource.textContent = "starter rules만 사용";
+    autoBadge.textContent = "자동 로드 없음";
+    autoBadge.className = "vault-auto-badge vault-auto-off";
+    return;
+  }
+
+  activeSource.textContent = runtime.source;
+  autoBadge.textContent = runtime.autoLoaded ? "자동 로드됨" : "자동 로드 사용 가능";
+  autoBadge.className = `vault-auto-badge ${runtime.autoLoaded ? "vault-auto-on" : "vault-auto-off"}`;
 }
 
 async function handleStart() {
@@ -102,20 +242,19 @@ async function collectActiveAccounts() {
     const accountId = card.dataset.accountId;
     const manifest = accountManifests.find((item) => item.id === accountId);
     const transactionFile = card.querySelector(".transaction-file").files[0];
-    const rulesFile = card.querySelector(".rules-file").files[0];
+    const runtimeRules = runtimeRuleMap.get(accountId);
 
     if (!transactionFile) {
       continue;
     }
 
-    const overrides = rulesFile ? JSON.parse(await rulesFile.text()) : {};
     activeAccounts.push({
       manifest: {
         ...manifest,
         rules: starterRules[accountId]
       },
       transactionFile,
-      overrides
+      overrides: runtimeRules?.rules || {}
     });
   }
 
@@ -169,6 +308,16 @@ function downloadFile(file) {
   URL.revokeObjectURL(url);
 }
 
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function setStatus(message, tone) {
   statusBox.textContent = message;
   statusBox.className = `status-box ${tone === "warn" ? "status-warn" : "status-good"}`;
@@ -199,4 +348,28 @@ function resolveEffectiveMonth(accounts, selectedMonth) {
   const latestMonth = months[months.length - 1];
   reportMonthInput.value = latestMonth;
   return latestMonth;
+}
+
+async function getCandidateRulesForSave(accountId) {
+  const runtime = runtimeRuleMap.get(accountId);
+  if (runtime?.rules) {
+    return runtime.rules;
+  }
+  throw new Error("금고에 저장할 규칙이 없습니다. 먼저 비공개 규칙 JSON을 업로드하거나 금고 규칙을 불러와 주세요.");
+}
+
+async function safeParseRulesFile(file, errorMessage) {
+  try {
+    return JSON.parse(await file.text());
+  } catch {
+    throw new Error(errorMessage);
+  }
+}
+
+function formatTimestamp(isoString) {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleString("ko-KR");
 }

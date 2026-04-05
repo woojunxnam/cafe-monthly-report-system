@@ -20,8 +20,8 @@ export const accountManifests = [
     displayName: "규칙 미정 placeholder",
     kind: "placeholder",
     notes: [
-      "세부 규칙은 아직 비어 있습니다.",
-      "비공개 규칙 JSON을 업로드하면 override 됩니다."
+      "아직 실제 규칙은 비어 있습니다.",
+      "비공개 규칙 JSON을 업로드하거나 금고에서 불러오면 override 됩니다."
     ]
   },
   {
@@ -32,8 +32,8 @@ export const accountManifests = [
     displayName: "규칙 미정 placeholder",
     kind: "placeholder",
     notes: [
-      "세부 규칙은 아직 비어 있습니다.",
-      "향후 계좌가 늘어나도 같은 구조로 추가 가능합니다."
+      "아직 실제 규칙은 비어 있습니다.",
+      "향후 계좌가 늘어도 같은 구조로 확장 가능합니다."
     ]
   }
 ];

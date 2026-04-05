@@ -86,6 +86,26 @@
         </label>
       </div>
 
+      <section class="vault-box">
+        <div class="vault-head">
+          <h4>비공개 규칙 금고</h4>
+          <span class="vault-auto-badge">자동 로드 대기</span>
+        </div>
+        <div class="vault-status">
+          <div><strong>저장 상태:</strong> <span class="vault-saved-state">확인 중</span></div>
+          <div><strong>마지막 업데이트:</strong> <span class="vault-updated-at">-</span></div>
+          <div><strong>현재 사용 규칙:</strong> <span class="vault-active-source">업로드 우선</span></div>
+        </div>
+        <div class="vault-actions">
+          <button class="secondary-button vault-save-button" type="button">금고에 저장</button>
+          <button class="secondary-button vault-load-button" type="button">금고에서 불러오기</button>
+          <button class="secondary-button vault-delete-button" type="button">금고에서 삭제</button>
+          <button class="secondary-button vault-export-button" type="button">내보내기</button>
+          <button class="secondary-button vault-import-button" type="button">가져오기</button>
+          <input class="vault-import-file" type="file" accept=".json,application/json" hidden />
+        </div>
+      </section>
+
       <div class="account-meta"></div>
     </article>
   </template>
