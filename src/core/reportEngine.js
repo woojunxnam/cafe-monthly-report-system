@@ -151,41 +151,91 @@ export function buildMasterReport(accountReports, reportMonth) {
     depositCount: report.totals.depositCount
   }));
 
-  const majorCategoryComparison = accountReports.flatMap(({ report }) =>
-    [
-      ...report.withdrawalSummary.slice(0, 5).map((item) => ({
-        account: report.manifest.displayName,
-        type: "출금",
-        category: item.category,
-        total: item.total,
-        count: item.count
-      })),
-      ...report.depositSummary.slice(0, 5).map((item) => ({
-        account: report.manifest.displayName,
-        type: "입금",
-        category: item.category,
-        total: item.total,
-        count: item.count
-      }))
-    ]
+  const operatingWithdrawals = accountReports.flatMap(({ report }) =>
+    report.operatingWithdrawals.map((row) => ({
+      ...row,
+      accountLabel: report.manifest.displayName,
+      accountNumberLabel: report.manifest.accountNumber
+    }))
   );
-
-  const relatedTransferRows = accountReports.flatMap(({ report }) =>
-    report.relatedTransferSummary.map((item) => ({
-      account: report.manifest.displayName,
-      ...item
+  const deposits = accountReports.flatMap(({ report }) =>
+    report.deposits.map((row) => ({
+      ...row,
+      accountLabel: report.manifest.displayName,
+      accountNumberLabel: report.manifest.accountNumber
+    }))
+  );
+  const excludedRows = accountReports.flatMap(({ report }) =>
+    report.excludedRows.map((row) => ({
+      ...row,
+      accountLabel: report.manifest.displayName,
+      accountNumberLabel: report.manifest.accountNumber
+    }))
+  );
+  const relatedRows = accountReports.flatMap(({ report }) =>
+    report.relatedRows.map((row) => ({
+      ...row,
+      accountLabel: report.manifest.displayName,
+      accountNumberLabel: report.manifest.accountNumber
     }))
   );
 
+  const withdrawalSummary = summarizeByCategory(operatingWithdrawals, "withdrawal");
+  const depositSummary = summarizeByCategory(deposits, "deposit");
+  const relatedTransferSummary = summarizeRelatedTransfers(relatedRows);
+  const majorWithdrawalThreshold = Math.min(
+    ...accountReports.map(({ report }) => report.rules.reportSettings.majorWithdrawalThreshold)
+  );
+  const majorDepositThreshold = Math.min(
+    ...accountReports.map(({ report }) => report.rules.reportSettings.majorDepositThreshold)
+  );
+  const majorWithdrawalCategories = new Set(
+    withdrawalSummary.filter((item) => item.total >= majorWithdrawalThreshold).map((item) => item.category)
+  );
+  const majorDepositCategories = new Set(
+    depositSummary.filter((item) => item.total >= majorDepositThreshold).map((item) => item.category)
+  );
+  const majorWithdrawals = operatingWithdrawals.filter((row) => majorWithdrawalCategories.has(row.category));
+  const majorDeposits = deposits.filter((row) => majorDepositCategories.has(row.category));
+
   const master = {
     reportMonth,
-    rows,
-    majorCategoryComparison,
-    relatedTransferRows,
+    manifest: {
+      displayName: "통합 master report",
+      accountNumber: `${accountReports.length}개 계좌 합산`,
+      notes: ["계좌별 리포트와 동일한 구조로 전체 데이터를 합산한 통합 리포트입니다."]
+    },
+    summaryRows: rows,
     totals: {
-      totalWithdrawal: rows.reduce((acc, row) => acc + row.totalWithdrawal, 0),
-      totalDeposit: rows.reduce((acc, row) => acc + row.totalDeposit, 0)
-    }
+      totalWithdrawal: sum(operatingWithdrawals, "withdrawal"),
+      totalDeposit: sum(deposits, "deposit"),
+      withdrawalCount: operatingWithdrawals.length,
+      depositCount: deposits.length,
+      netFlow: sum(deposits, "deposit") - sum(operatingWithdrawals, "withdrawal"),
+      accountCount: accountReports.length
+    },
+    operatingWithdrawals,
+    deposits,
+    excludedRows,
+    relatedRows,
+    withdrawalSummary,
+    depositSummary,
+    relatedTransferSummary,
+    majorWithdrawals,
+    majorDeposits,
+    withdrawalDailySeries: buildDailySeries(operatingWithdrawals, "withdrawal"),
+    depositDailySeries: buildDailySeries(deposits, "deposit"),
+    majorWithdrawalGroups: buildDetailGroups(majorWithdrawals, "withdrawal"),
+    majorDepositGroups: buildDetailGroups(majorDeposits, "deposit"),
+    relatedDetailGroups: buildRelatedDetailGroups(relatedRows),
+    notes: buildMasterReviewNotes({
+      reportMonth,
+      accountCount: accountReports.length,
+      operatingWithdrawals,
+      deposits,
+      withdrawalSummary,
+      depositSummary
+    })
   };
 
   return {
@@ -464,6 +514,21 @@ function buildReviewNotes({ reportMonth, meta, operatingWithdrawals, deposits, w
     `최대 운영지출 카테고리는 ${topWithdrawal?.category || "-"}, 최대 입금 카테고리는 ${topDeposit?.category || "-"}입니다.`,
     `카드매출정산 ${cardSettlements.length}건, 고객직접입금 ${directDeposits.length}건, ATM입금 ${atmDeposits.length}건으로 분류되었습니다.`,
     `이 리포트는 계좌 ${meta.accountNumber} 기준이며, 계좌별 override 규칙에 따라 분류가 달라질 수 있습니다.`
+  ];
+}
+
+function buildMasterReviewNotes({ reportMonth, accountCount, operatingWithdrawals, deposits, withdrawalSummary, depositSummary }) {
+  const topWithdrawal = withdrawalSummary[0];
+  const topDeposit = depositSummary[0];
+  const atmDeposits = deposits.filter((row) => row.category === "ATM입금");
+  const directDeposits = deposits.filter((row) => row.category === "고객직접입금");
+  const cardSettlements = deposits.filter((row) => row.category === "카드매출정산");
+
+  return [
+    `${reportMonth} 기준 ${accountCount}개 계좌를 합산한 master report입니다.`,
+    `운영지출 합계는 ${formatWon(sum(operatingWithdrawals, "withdrawal"))}, 총 입금 합계는 ${formatWon(sum(deposits, "deposit"))}입니다.`,
+    `최대 운영지출 카테고리는 ${topWithdrawal?.category || "-"}, 최대 입금 카테고리는 ${topDeposit?.category || "-"}입니다.`,
+    `카드매출정산 ${cardSettlements.length}건, 고객직접입금 ${directDeposits.length}건, ATM입금 ${atmDeposits.length}건으로 분류되었습니다.`
   ];
 }
 
